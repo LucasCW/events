@@ -1,11 +1,12 @@
 import { AfterViewInit, Component, OnInit } from '@angular/core';
 import { GoogleMapsModule } from '@angular/google-maps';
 import { RouterOutlet } from '@angular/router';
+import { SidebarComponent } from './sidebar/sidebar.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, GoogleMapsModule],
+  imports: [RouterOutlet, GoogleMapsModule, SidebarComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
