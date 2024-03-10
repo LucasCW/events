@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { GoogleMapsModule } from '@angular/google-maps';
 import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from './sidebar/sidebar.component';
@@ -8,13 +8,16 @@ import { SidebarComponent } from './sidebar/sidebar.component';
   standalone: true,
   imports: [RouterOutlet, GoogleMapsModule, SidebarComponent],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+  styleUrl: './app.component.css',
 })
 export class AppComponent implements OnInit {
   title = 'events';
 
   zoom = 120;
   center: google.maps.LatLngLiteral = { lat: 1, lng: 1 };
+
+  @ViewChild('autocomplete') autocomplete!: ElementRef;
+
   options: google.maps.MapOptions = {
     mapTypeId: 'roadmap',
     zoomControl: false,
@@ -26,14 +29,16 @@ export class AppComponent implements OnInit {
 
   ngOnInit() {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position: GeolocationPosition) => {
-        this.center = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-      });
+      navigator.geolocation.getCurrentPosition(
+        (position: GeolocationPosition) => {
+          this.center = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+        }
+      );
     } else {
-      console.log("navigator.geolocation doesn't exists")
+      console.log("navigator.geolocation doesn't exists");
     }
   }
 
@@ -46,12 +51,19 @@ export class AppComponent implements OnInit {
   }
 
   currentLocation() {
-    (navigator.geolocation as Geolocation).getCurrentPosition((position: GeolocationPosition) => {
-      this.center = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      };
-    });
+    (navigator.geolocation as Geolocation).getCurrentPosition(
+      (position: GeolocationPosition) => {
+        this.center = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+      }
+    );
   }
 
+  initGoogle() {
+    if (google) {
+      new google.maps.places.Autocomplete(this.autocomplete.nativeElement);
+    }
+  }
 }
