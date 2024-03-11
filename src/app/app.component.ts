@@ -2,11 +2,12 @@ import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { GoogleMapsModule } from '@angular/google-maps';
 import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from './sidebar/sidebar.component';
+import { LoginComponent } from './login/login.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, GoogleMapsModule, SidebarComponent],
+  imports: [RouterOutlet, GoogleMapsModule, SidebarComponent, LoginComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
