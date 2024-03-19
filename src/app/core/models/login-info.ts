@@ -1,8 +1,10 @@
-export interface LoginInfo {
-  idToken: string;
-  email: string;
-  refreshToken: string;
-  expiresIn: string;
-  localId: string;
-  registered?: boolean;
+export class User {
+  constructor(
+    public idToken: string,
+    public email: string,
+    public refreshToken: string,
+    public expiresIn: string,
+    public localId: string,
+    public registered?: string
+  ) {}
 }

@@ -1,88 +1,126 @@
-import { HttpClientModule } from '@angular/common/http';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
-  AfterViewInit,
-  Component,
-  ElementRef,
-  Inject,
-  OnInit,
-  PLATFORM_ID,
-  Renderer2,
-  ViewChild,
+    AfterViewInit,
+    Component,
+    ElementRef,
+    Inject,
+    OnInit,
+    PLATFORM_ID,
+    ViewChild,
 } from '@angular/core';
-import { FormsModule, NgForm } from '@angular/forms';
-import { AuthenticationService } from '../core/services/authentication.service';
-import { isPlatformBrowser } from '@angular/common';
+import {
+    FormControl,
+    NonNullableFormBuilder,
+    ReactiveFormsModule,
+    Validators,
+} from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { faUserLarge, faPlus } from '@fortawesome/free-solid-svg-icons';
+import {
+    faPlus,
+    faSignOut,
+    faUserLarge,
+} from '@fortawesome/free-solid-svg-icons';
+import { Store } from '@ngrx/store';
 import { Modal } from 'bootstrap';
+import { first, map } from 'rxjs';
+import { State as AppState } from '../../app/store/index';
+import { AuthenticationService } from '../core/services/authentication.service';
+import { LoginStart, Logout, Reset } from '../store/auth/auth.actions';
 
 @Component({
-  selector: 'app-login',
-  standalone: true,
-  imports: [FormsModule, HttpClientModule, FontAwesomeModule],
-  templateUrl: './login.component.html',
-  styleUrl: './login.component.css',
-  providers: [AuthenticationService],
+    selector: 'app-login',
+    standalone: true,
+    imports: [ReactiveFormsModule, FontAwesomeModule, CommonModule],
+    templateUrl: './login.component.html',
+    styleUrl: './login.component.css',
+    providers: [AuthenticationService],
 })
 export class LoginComponent implements OnInit, AfterViewInit {
-  email: string = 'test@test.com';
-  password: string = 'abc123';
+    loginForm = this.fb.group({
+        email: this.fb.control<string>('lucaschiwang@gmail.com', [
+            Validators.email,
+            Validators.required,
+        ]),
+        password: this.fb.control<string>(
+            'iasdflk1@sakdjfB',
+            Validators.required
+        ),
+    });
 
-  modal?: Modal;
+    private modal?: Modal;
 
-  faUserLarge = faUserLarge;
-  faPlus = faPlus;
+    faUserLarge = faUserLarge;
+    faSignOut = faSignOut;
+    faPlus = faPlus;
 
-  @ViewChild('loginModal', { static: true }) loginModal!: ElementRef;
-  isBrowser: boolean = false;
+    errors$ = this.store.select('auth', 'error');
+    isLoggedIn$ = this.store.select('auth', 'isLoggedIn');
 
-  constructor(
-    private authenticationService: AuthenticationService,
-    @Inject(PLATFORM_ID) private platformId: any,
-    private render: Renderer2
-  ) {
-    this.isBrowser = isPlatformBrowser(platformId);
-  }
+    @ViewChild('loginModal', { static: true }) loginModal!: ElementRef;
+    isBrowser: boolean = false;
 
-  ngAfterViewInit(): void {
-    this.getLoggedInUser();
-  }
-
-  getLoggedInUser() {
-    if (this.isBrowser) {
-      const loggedInUser = localStorage.getItem('user');
-      if (loggedInUser) {
-        // TODO Already logged in.
-        console.log('already loggedIn', loggedInUser);
-      } else {
-        this.modal?.show();
-      }
+    constructor(
+        @Inject(PLATFORM_ID) private platformId: any,
+        private store: Store<AppState>,
+        private fb: NonNullableFormBuilder
+    ) {
+        this.isBrowser = isPlatformBrowser(platformId);
     }
-  }
 
-  ngOnInit(): void {
-    this.modal = new Modal(this.loginModal.nativeElement);
-  }
+    ngAfterViewInit(): void {
+        this.isLoggedIn$
+            .pipe(
+                first(),
+                map((isLoggedIn: boolean) => {
+                    if (!isLoggedIn) this.modal?.show();
+                })
+            )
+            .subscribe();
+    }
 
-  openModal() {
-    this.modal?.show();
-  }
+    ngOnInit(): void {
+        this.modal = new Modal(this.loginModal.nativeElement);
+    }
 
-  closeModal() {
-    this.modal?.hide();
-  }
+    openModal() {
+        this.modal?.show();
+    }
 
-  login(form: NgForm) {
-    this.authenticationService
-      .login(form.value.email, form.value.password)
-      .subscribe({
-        next: (result) => {
-          localStorage.setItem('user', JSON.stringify(result));
-          this.modal?.hide();
-        },
-        error: (error) => {
-          console.log(error);
-        },
-      });
-  }
+    closeModal() {
+        this.modal?.hide();
+        this.loginForm.reset();
+        this.store.dispatch(Reset());
+    }
+
+    onSubmit() {
+        this.store.dispatch(
+            LoginStart({
+                payload: {
+                    email: this.loginForm.value.email!,
+                    password: this.loginForm.value.password!,
+                },
+            })
+        );
+
+        this.store.select('auth', 'loggedInUser').subscribe({
+            next: (result) => {
+                if (result) this.modal?.hide();
+            },
+            error: (error) => {
+                console.log(error);
+            },
+        });
+    }
+
+    get email() {
+        return this.loginForm.controls['email'] as FormControl;
+    }
+
+    get password() {
+        return this.loginForm.controls['password'] as FormControl;
+    }
+
+    logout() {
+        this.store.dispatch(Logout());
+    }
 }
