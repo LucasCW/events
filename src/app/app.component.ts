@@ -17,7 +17,7 @@ import {
 import { Store } from '@ngrx/store';
 import { first, map } from 'rxjs';
 import { State as AppState } from '../app/store/index';
-import { User } from './core/models/login-info';
+import { User } from './core/models/user';
 import { LoginComponent } from './login/login.component';
 import { SidebarComponent } from './sidebar/sidebar.component';
 import { AuthenticateSuccess, Logout } from './store/auth/auth.actions';

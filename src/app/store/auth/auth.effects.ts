@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
-import { User } from '../../core/models/login-info';
+import { User } from '../../core/models/user';
 import { AuthenticationService } from '../../core/services/authentication.service';
 import * as AuthActions from './auth.actions';
 
