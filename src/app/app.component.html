@@ -1,7 +1,35 @@
 <!-- <input id="autocomplete" placeholder="enter a place" type="text" #autocomplete/> -->
 <!-- <button class="btn btn-primary" (click)="initGoogle()">Init</button> -->
 <div class="position-relative">
-    <app-login></app-login>
+    @if((isLoggedIn$ | async)) {
+    <div
+        class="btn-group z-1 start-50 bottom-0 translate-middle position-absolute gap-5"
+    >
+        <button
+            type="button"
+            class="btn btn-primary btn-sm rounded-circle p-4 rounded-pill"
+            (click)="logout()"
+        >
+            <fa-icon type="button" [icon]="faSignOut" size="5x"></fa-icon>
+        </button>
+        <button
+            type="button"
+            class="btn btn-primary btn-sm rounded-circle p-4 rounded-pill"
+            (click)="addEvent()"
+        >
+            <fa-icon type="button" [icon]="faPlus" size="5x"></fa-icon>
+        </button>
+    </div>
+    } @else {
+    <button
+        type="button"
+        class="btn btn-primary btn-sm rounded-circle p-4 z-1 start-50 bottom-0 translate-middle rounded-pill position-absolute"
+        (click)="openModal()"
+    >
+        <fa-icon type="button" [icon]="faUserLarge" size="5x"></fa-icon>
+    </button>
+    }
+    <app-login #loginForm></app-login>
     <div class="container-fluid">
         <div class="row">
             <!-- <div class="col-lg-3">

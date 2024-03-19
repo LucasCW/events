@@ -1,27 +1,74 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import {
+    AfterViewInit,
+    Component,
+    ElementRef,
+    OnInit,
+    ViewChild,
+} from '@angular/core';
 import { GoogleMapsModule } from '@angular/google-maps';
 import { RouterOutlet } from '@angular/router';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import {
+    faPlus,
+    faSignOut,
+    faUserLarge,
+} from '@fortawesome/free-solid-svg-icons';
 import { Store } from '@ngrx/store';
+import { first, map } from 'rxjs';
 import { State as AppState } from '../app/store/index';
 import { User } from './core/models/login-info';
 import { LoginComponent } from './login/login.component';
 import { SidebarComponent } from './sidebar/sidebar.component';
-import { AuthenticateSuccess } from './store/auth/auth.actions';
+import { AuthenticateSuccess, Logout } from './store/auth/auth.actions';
 
 @Component({
     selector: 'app-root',
     standalone: true,
-    imports: [RouterOutlet, GoogleMapsModule, SidebarComponent, LoginComponent],
+    imports: [
+        RouterOutlet,
+        GoogleMapsModule,
+        SidebarComponent,
+        LoginComponent,
+        CommonModule,
+        FontAwesomeModule,
+    ],
     templateUrl: './app.component.html',
     styleUrl: './app.component.css',
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, AfterViewInit {
+    @ViewChild(LoginComponent)
+    private loginCmp!: LoginComponent;
+
+    openModal() {
+        this.loginCmp.openModal();
+    }
+    addEvent() {
+        throw new Error('Method not implemented.');
+    }
+    faUserLarge = faUserLarge;
+    faSignOut = faSignOut;
+    faPlus = faPlus;
+
+    isLoggedIn$ = this.store.select('auth', 'isLoggedIn');
+
     title = 'events';
 
     zoom = 120;
     center: google.maps.LatLngLiteral = { lat: 1, lng: 1 };
 
     @ViewChild('autocomplete') autocomplete!: ElementRef;
+
+    ngAfterViewInit(): void {
+        this.isLoggedIn$
+            .pipe(
+                first(),
+                map((isLoggedIn: boolean) => {
+                    if (!isLoggedIn) this.loginCmp.openModal();
+                })
+            )
+            .subscribe();
+    }
 
     options: google.maps.MapOptions = {
         mapTypeId: 'roadmap',
@@ -80,5 +127,9 @@ export class AppComponent implements OnInit {
                 this.autocomplete.nativeElement
             );
         }
+    }
+
+    logout() {
+        this.store.dispatch(Logout());
     }
 }

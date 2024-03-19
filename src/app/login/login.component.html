@@ -1,22 +1,4 @@
-@if((isLoggedIn$ | async)) {
-<button
-    type="button"
-    class="btn btn-primary btn-sm rounded-circle p-4 z-1 start-50 bottom-0 translate-middle rounded-pill position-absolute"
-    (click)="logout()"
->
-    <fa-icon type="button" [icon]="faSignOut" size="5x"></fa-icon>
-</button>
-} @else {
-<button
-    type="button"
-    class="btn btn-primary btn-sm rounded-circle p-4 z-1 start-50 bottom-0 translate-middle rounded-pill position-absolute"
-    (click)="openModal()"
->
-    <fa-icon type="button" [icon]="faUserLarge" size="5x"></fa-icon>
-</button>
-}
 <div class="container">
-    <!-- Modal -->
     <div
         class="modal fade"
         id="loginModal"
@@ -104,7 +86,7 @@
                             class="btn btn-primary w-100 mb-3"
                             [disabled]="!loginForm.valid"
                         >
-                            Submit
+                            Login
                         </button>
                         <button
                             type="button"
