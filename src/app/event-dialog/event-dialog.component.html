@@ -1,0 +1,30 @@
+<div class="container">
+    <h2 mat-dialog-title>Create an Event</h2>
+    <form>
+        <mat-form-field class="example-full-width">
+            <mat-label>Location</mat-label>
+            <input
+                type="text"
+                placeholder="Pick one"
+                aria-label="Location"
+                matInput
+                [formControl]="locationControl"
+                [matAutocomplete]="location"
+            />
+            <mat-autocomplete autoActiveFirstOption #location="matAutocomplete">
+                @for (location of searchResultObs | async; track
+                location.place_id) {
+                <mat-option [value]="location.formatted_address">{{
+                    location.formatted_address
+                }}</mat-option>
+                }
+            </mat-autocomplete>
+        </mat-form-field>
+
+        <mat-form-field>
+            <mat-label>Test Input field</mat-label>
+            <input matInput placeholder="Placeholder" value="Test value" />
+        </mat-form-field>
+    </form>
+    <button class="btn btn-primary">Give me the address¡</button>
+</div>

@@ -20,10 +20,10 @@ export class AuthEffects {
                 return this.authService
                     .login(loginData.payload.email, loginData.payload.password)
                     .pipe(
-                        tap((respound) => {
+                        tap((respound: User) => {
                             console.log('respound', respound);
                         }),
-                        map((response: any) => {
+                        map((response: User) => {
                             const user = new User(
                                 response.idToken,
                                 response.email,

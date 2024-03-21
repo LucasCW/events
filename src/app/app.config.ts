@@ -11,15 +11,18 @@ import { AuthInterceptor } from './core/services/auth.interceptor.service';
 import { authInterceptor } from './core/services/test.interceptor.service';
 import { reducers } from './store';
 import { AuthEffects } from './store/auth/auth.effects';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { EventsEffect } from './store/event/events.effeccts';
 
 export const appConfig: ApplicationConfig = {
-  providers: [
-    provideRouter(routes),
-    provideClientHydration(),
-    provideHttpClient(),
-    provideStore(reducers),
-    provideEffects(AuthEffects),
-    provideStoreDevtools({ maxAge: 25 }),
-    provideHttpClient(withInterceptors([authInterceptor, AuthInterceptor])),
-  ],
+    providers: [
+        provideRouter(routes),
+        provideClientHydration(),
+        provideHttpClient(),
+        provideStore(reducers),
+        provideEffects(AuthEffects, EventsEffect),
+        provideStoreDevtools({ maxAge: 25 }),
+        provideHttpClient(withInterceptors([authInterceptor, AuthInterceptor])),
+        provideAnimationsAsync(),
+    ],
 };

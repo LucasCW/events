@@ -1,5 +1,12 @@
-<!-- <input id="autocomplete" placeholder="enter a place" type="text" #autocomplete/> -->
-<!-- <button class="btn btn-primary" (click)="initGoogle()">Init</button> -->
+<!-- <input
+    id="autocomplete"
+    placeholder="enter a place"
+    type="text"
+    #autocomplete
+    (input)="onChange($event)"
+/>
+<button class="btn btn-primary" (click)="initGoogle()">Init</button>
+<button class="btn btn-primary" (click)="getInfo()">Get!</button> -->
 <div class="position-relative">
     @if((isLoggedIn$ | async)) {
     <div
@@ -30,6 +37,7 @@
     </button>
     }
     <app-login #loginForm></app-login>
+    <app-events #eventsForm></app-events>
     <div class="container-fluid">
         <div class="row">
             <!-- <div class="col-lg-3">
@@ -37,12 +45,19 @@
       </div> -->
             <div class="col">
                 <google-map
+                    #map
                     height="100vh"
                     width="100%"
                     [zoom]="zoom"
                     [center]="center"
-                    [options]="options"
-                ></google-map>
+                    [options]="mapOptions"
+                >
+                    @for (event of events$ | async; track event.id) {
+                    <map-advanced-marker
+                        [position]="event.position"
+                    ></map-advanced-marker>
+                    }
+                </google-map>
             </div>
             <div class="w-100"></div>
         </div>

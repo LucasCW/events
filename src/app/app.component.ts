@@ -1,12 +1,17 @@
-import { CommonModule } from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 import {
     AfterViewInit,
     Component,
     ElementRef,
     OnInit,
     ViewChild,
+    inject,
 } from '@angular/core';
-import { GoogleMapsModule } from '@angular/google-maps';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { GoogleMap, GoogleMapsModule } from '@angular/google-maps';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { RouterOutlet } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
@@ -15,12 +20,17 @@ import {
     faUserLarge,
 } from '@fortawesome/free-solid-svg-icons';
 import { Store } from '@ngrx/store';
-import { first, map } from 'rxjs';
+import { Observable, first, map, startWith } from 'rxjs';
+import { EventData } from '../app/core/models/event';
 import { State as AppState } from '../app/store/index';
 import { User } from './core/models/user';
+import { EventsComponent } from './events/events.component';
 import { LoginComponent } from './login/login.component';
 import { SidebarComponent } from './sidebar/sidebar.component';
 import { AuthenticateSuccess, Logout } from './store/auth/auth.actions';
+import { fetchEvents, saveEvent } from './store/event/events.actions';
+import { MatDialog } from '@angular/material/dialog';
+import { EventDialogComponent } from './event-dialog/event-dialog.component';
 
 @Component({
     selector: 'app-root',
@@ -30,22 +40,31 @@ import { AuthenticateSuccess, Logout } from './store/auth/auth.actions';
         GoogleMapsModule,
         SidebarComponent,
         LoginComponent,
-        CommonModule,
         FontAwesomeModule,
+        EventsComponent,
+        AsyncPipe,
+        ReactiveFormsModule,
+        FormsModule,
     ],
     templateUrl: './app.component.html',
     styleUrl: './app.component.css',
 })
 export class AppComponent implements OnInit, AfterViewInit {
+    position = { lat: -33.77112988424452, lng: 151.01235799780886 };
+
+    events$ = this.store.select('events', 'events');
+
+    @ViewChild(GoogleMap)
+    map!: GoogleMap;
+
+    private matDialog = inject(MatDialog);
+
     @ViewChild(LoginComponent)
     private loginCmp!: LoginComponent;
 
-    openModal() {
-        this.loginCmp.openModal();
-    }
-    addEvent() {
-        throw new Error('Method not implemented.');
-    }
+    @ViewChild(EventsComponent)
+    private eventsCmp!: EventsComponent;
+
     faUserLarge = faUserLarge;
     faSignOut = faSignOut;
     faPlus = faPlus;
@@ -68,15 +87,40 @@ export class AppComponent implements OnInit, AfterViewInit {
                 })
             )
             .subscribe();
+
+        this.map.mapDblclick.subscribe((event: google.maps.MapMouseEvent) => {
+            // console.log('dbClick', event);
+            // console.log('latLng', event.latLng?.lat(), event.latLng?.lng());
+            if (event.latLng) {
+                const eventLatLng = {
+                    lat: event.latLng!.lat(),
+                    lng: event.latLng!.lng(),
+                };
+                const newEvent = new EventData('test event', eventLatLng);
+                this.store.dispatch(saveEvent({ payload: newEvent }));
+            }
+        });
     }
 
-    options: google.maps.MapOptions = {
+    // async addMarker() {
+    //     const { AdvancedMarkerElement } = (await google.maps.importLibrary(
+    //         'marker'
+    //     )) as google.maps.MarkerLibrary;
+    //     const marker = new AdvancedMarkerElement({
+    //         map: this.map.googleMap,
+    //         position: this.position,
+    //         title: 'Test',
+    //     });
+    // }
+
+    mapOptions: google.maps.MapOptions = {
         mapTypeId: 'roadmap',
         zoomControl: false,
         scrollwheel: false,
         disableDoubleClickZoom: true,
         maxZoom: 15,
         minZoom: 8,
+        mapId: 'DEMO_MAP_ID',
     };
 
     constructor(private store: Store<AppState>) {
@@ -100,14 +144,16 @@ export class AppComponent implements OnInit, AfterViewInit {
         } else {
             console.log("navigator.geolocation doesn't exists");
         }
+
+        this.store.dispatch(fetchEvents());
     }
 
     zoomIn() {
-        if (this.zoom < this.options.maxZoom!) this.zoom++;
+        if (this.zoom < this.mapOptions.maxZoom!) this.zoom++;
     }
 
     zoomOut() {
-        if (this.zoom > this.options.minZoom!) this.zoom--;
+        if (this.zoom > this.mapOptions.minZoom!) this.zoom--;
     }
 
     currentLocation() {
@@ -121,15 +167,50 @@ export class AppComponent implements OnInit, AfterViewInit {
         );
     }
 
+    event: google.maps.places.PlaceAutocompletePlaceSelectEvent | undefined;
+
+    googleAutocomplete!: google.maps.places.Autocomplete | undefined;
+
+    getInfo() {
+        if (this.googleAutocomplete) {
+            console.log('event', this.event?.place);
+        }
+    }
+
     initGoogle() {
         if (google) {
-            new google.maps.places.Autocomplete(
+            this.googleAutocomplete = new google.maps.places.Autocomplete(
                 this.autocomplete.nativeElement
             );
+            this.googleAutocomplete.addListener(
+                'place_changed',
+                (event: any) => {
+                    console.log(event);
+                    if (this.googleAutocomplete)
+                        console.log(this.googleAutocomplete.getPlace());
+                }
+            );
+        }
+    }
+
+    onChange(str: any) {
+        if (this.googleAutocomplete) {
+            console.log(this.googleAutocomplete.getPlace());
         }
     }
 
     logout() {
         this.store.dispatch(Logout());
+    }
+
+    openModal() {
+        this.loginCmp.openModal();
+    }
+    addEvent() {
+        console.log('div', this.map.googleMap?.getDiv());
+        this.matDialog.open(EventDialogComponent, {
+            data: { map: this.map.googleMap?.getDiv().firstElementChild },
+            autoFocus: false,
+        });
     }
 }
