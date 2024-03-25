@@ -1,30 +1,21 @@
 import { AsyncPipe } from '@angular/common';
 import {
-    AfterContentChecked,
-    AfterContentInit,
-    AfterViewChecked,
     AfterViewInit,
     Component,
-    DoCheck,
     ElementRef,
-    OnChanges,
-    OnDestroy,
     OnInit,
     QueryList,
-    SimpleChanges,
     ViewChild,
     ViewChildren,
     inject,
 } from '@angular/core';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import {
     GoogleMap,
     GoogleMapsModule,
     MapAdvancedMarker,
 } from '@angular/google-maps';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
+import { MatDialog } from '@angular/material/dialog';
 import { RouterOutlet } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
@@ -32,18 +23,18 @@ import {
     faSignOut,
     faUserLarge,
 } from '@fortawesome/free-solid-svg-icons';
-import { Store } from '@ngrx/store';
-import { Observable, first, map, startWith } from 'rxjs';
+import { Store, select } from '@ngrx/store';
+import { first, map } from 'rxjs';
 import { EventData } from '../app/core/models/event';
 import { State as AppState } from '../app/store/index';
 import { User } from './core/models/user';
-import { EventsComponent } from './events/events.component';
+import { EventDialogComponent } from './event-dialog/event-dialog.component';
 import { LoginComponent } from './login/login.component';
 import { SidebarComponent } from './sidebar/sidebar.component';
 import { AuthenticateSuccess, Logout } from './store/auth/auth.actions';
-import { fetchEvents, saveEvent } from './store/event/events.actions';
-import { MatDialog } from '@angular/material/dialog';
-import { EventDialogComponent } from './event-dialog/event-dialog.component';
+import * as fromAuthSelector from './store/auth/auth.selectors';
+import { fetchEvents } from './store/event/events.actions';
+import { eventsSelector } from './store/event/events.selectors';
 
 @Component({
     selector: 'app-root',
@@ -54,7 +45,6 @@ import { EventDialogComponent } from './event-dialog/event-dialog.component';
         SidebarComponent,
         LoginComponent,
         FontAwesomeModule,
-        EventsComponent,
         AsyncPipe,
         ReactiveFormsModule,
         FormsModule,
@@ -63,7 +53,7 @@ import { EventDialogComponent } from './event-dialog/event-dialog.component';
     styleUrl: './app.component.css',
 })
 export class AppComponent implements OnInit, AfterViewInit {
-    events$ = this.store.select('events', 'events');
+    events$ = this.store.select(eventsSelector);
 
     @ViewChild(GoogleMap)
     map!: GoogleMap;
@@ -76,14 +66,11 @@ export class AppComponent implements OnInit, AfterViewInit {
     @ViewChild(LoginComponent)
     private loginCmp!: LoginComponent;
 
-    @ViewChild(EventsComponent)
-    private eventsCmp!: EventsComponent;
-
     faUserLarge = faUserLarge;
     faSignOut = faSignOut;
     faPlus = faPlus;
 
-    isLoggedIn$ = this.store.select('auth', 'isLoggedIn');
+    isLoggedIn$ = this.store.select(fromAuthSelector.isLoggedInSelector);
 
     title = 'events';
 

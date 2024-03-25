@@ -1,5 +1,7 @@
 <div class="container">
-    <h2 mat-dialog-title class="m-3">Create an Event</h2>
+    <h2 mat-dialog-title class="m-3">
+        {{ isEditMode ? "Update the " : "Create a " }}Event
+    </h2>
     <form class="m-3" [formGroup]="form" (ngSubmit)="submit()">
         <mat-form-field class="mb-3">
             <mat-label>Test Input field</mat-label>

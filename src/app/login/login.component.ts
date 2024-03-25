@@ -11,6 +11,7 @@ import { Modal } from 'bootstrap';
 import { State as AppState } from '../../app/store/index';
 import { AuthenticationService } from '../core/services/authentication.service';
 import { LoginStart, Reset } from '../store/auth/auth.actions';
+import * as fromAuth from '../store/auth/auth.selectors';
 
 @Component({
     selector: 'app-login',
@@ -21,7 +22,7 @@ import { LoginStart, Reset } from '../store/auth/auth.actions';
     providers: [AuthenticationService],
 })
 export class LoginComponent implements OnInit {
-    errors$ = this.store.select('auth', 'error');
+    errors$ = this.store.select(fromAuth.errorSelector);
 
     private modal?: Modal;
 
@@ -67,7 +68,7 @@ export class LoginComponent implements OnInit {
             })
         );
 
-        this.store.select('auth', 'loggedInUser').subscribe({
+        this.store.select(fromAuth.loggedInUserSelector).subscribe({
             next: (result) => {
                 if (result) this.modal?.hide();
             },
