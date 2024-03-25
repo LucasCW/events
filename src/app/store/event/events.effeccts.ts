@@ -54,6 +54,8 @@ export class EventsEffect {
                                         response[key].title,
                                         response[key].position,
                                         response[key].formattedAddress,
+                                        response[key].date,
+                                        response[key].range,
                                         key
                                     )
                                 );

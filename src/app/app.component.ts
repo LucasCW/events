@@ -194,6 +194,7 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
     onMarkerClicked(event: EventData) {
+        console.log(event);
         this.matDialog.open(EventDialogComponent, { data: { event: event } });
     }
 }
