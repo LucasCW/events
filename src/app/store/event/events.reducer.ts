@@ -1,6 +1,6 @@
 import { createReducer, on } from '@ngrx/store';
 import { EventData } from '../../core/models/event';
-import { createEvent, loadEvents } from './events.actions';
+import { createEvent, loadEvents, updateEventStore } from './events.actions';
 
 export interface State {
     events: EventData[];
@@ -22,6 +22,17 @@ export const eventsReducer = createReducer(
         return {
             ...state,
             events: [...action.payload],
+        };
+    }),
+    on(updateEventStore, (state, action) => {
+        const eventsCopy = [...state.events];
+        const index = eventsCopy.findIndex(
+            (event) => event.id == action.payload.id
+        );
+        eventsCopy[index] = action.payload;
+        return {
+            ...state,
+            events: eventsCopy,
         };
     })
 );

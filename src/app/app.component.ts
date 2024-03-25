@@ -1,14 +1,27 @@
 import { AsyncPipe } from '@angular/common';
 import {
+    AfterContentChecked,
+    AfterContentInit,
+    AfterViewChecked,
     AfterViewInit,
     Component,
+    DoCheck,
     ElementRef,
+    OnChanges,
+    OnDestroy,
     OnInit,
+    QueryList,
+    SimpleChanges,
     ViewChild,
+    ViewChildren,
     inject,
 } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { GoogleMap, GoogleMapsModule } from '@angular/google-maps';
+import {
+    GoogleMap,
+    GoogleMapsModule,
+    MapAdvancedMarker,
+} from '@angular/google-maps';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -50,12 +63,13 @@ import { EventDialogComponent } from './event-dialog/event-dialog.component';
     styleUrl: './app.component.css',
 })
 export class AppComponent implements OnInit, AfterViewInit {
-    position = { lat: -33.77112988424452, lng: 151.01235799780886 };
-
     events$ = this.store.select('events', 'events');
 
     @ViewChild(GoogleMap)
     map!: GoogleMap;
+
+    @ViewChildren(MapAdvancedMarker)
+    private advancedMapMarkers?: QueryList<MapAdvancedMarker>;
 
     private matDialog = inject(MatDialog);
 
@@ -78,6 +92,23 @@ export class AppComponent implements OnInit, AfterViewInit {
 
     @ViewChild('autocomplete') autocomplete!: ElementRef;
 
+    ngOnInit() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position: GeolocationPosition) => {
+                    this.center = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                    };
+                }
+            );
+        } else {
+            console.log("navigator.geolocation doesn't exists");
+        }
+
+        this.store.dispatch(fetchEvents());
+    }
+
     ngAfterViewInit(): void {
         this.isLoggedIn$
             .pipe(
@@ -87,7 +118,6 @@ export class AppComponent implements OnInit, AfterViewInit {
                 })
             )
             .subscribe();
-
         this.map.mapDblclick.subscribe((event: google.maps.MapMouseEvent) => {
             // console.log('dbClick', event);
             // console.log('latLng', event.latLng?.lat(), event.latLng?.lng());
@@ -96,22 +126,19 @@ export class AppComponent implements OnInit, AfterViewInit {
                     lat: event.latLng!.lat(),
                     lng: event.latLng!.lng(),
                 };
-                const newEvent = new EventData('test event', eventLatLng);
-                this.store.dispatch(saveEvent({ payload: newEvent }));
+                // TODO
+                // const newEvent = new EventData('test event', eventLatLng);
+                // this.store.dispatch(saveEvent({ payload: newEvent }));
             }
+        });
+        this.map.mapClick.subscribe((event) => {
+            console.log('map click:', event);
         });
     }
 
-    // async addMarker() {
-    //     const { AdvancedMarkerElement } = (await google.maps.importLibrary(
-    //         'marker'
-    //     )) as google.maps.MarkerLibrary;
-    //     const marker = new AdvancedMarkerElement({
-    //         map: this.map.googleMap,
-    //         position: this.position,
-    //         title: 'Test',
-    //     });
-    // }
+    onMarkerClick(event: any) {
+        console.log(event);
+    }
 
     mapOptions: google.maps.MapOptions = {
         mapTypeId: 'roadmap',
@@ -129,23 +156,6 @@ export class AppComponent implements OnInit, AfterViewInit {
             const userObject = JSON.parse(savedUser) as User;
             this.store.dispatch(AuthenticateSuccess({ payload: userObject }));
         }
-    }
-
-    ngOnInit() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position: GeolocationPosition) => {
-                    this.center = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude,
-                    };
-                }
-            );
-        } else {
-            console.log("navigator.geolocation doesn't exists");
-        }
-
-        this.store.dispatch(fetchEvents());
     }
 
     zoomIn() {
@@ -167,38 +177,6 @@ export class AppComponent implements OnInit, AfterViewInit {
         );
     }
 
-    event: google.maps.places.PlaceAutocompletePlaceSelectEvent | undefined;
-
-    googleAutocomplete!: google.maps.places.Autocomplete | undefined;
-
-    getInfo() {
-        if (this.googleAutocomplete) {
-            console.log('event', this.event?.place);
-        }
-    }
-
-    initGoogle() {
-        if (google) {
-            this.googleAutocomplete = new google.maps.places.Autocomplete(
-                this.autocomplete.nativeElement
-            );
-            this.googleAutocomplete.addListener(
-                'place_changed',
-                (event: any) => {
-                    console.log(event);
-                    if (this.googleAutocomplete)
-                        console.log(this.googleAutocomplete.getPlace());
-                }
-            );
-        }
-    }
-
-    onChange(str: any) {
-        if (this.googleAutocomplete) {
-            console.log(this.googleAutocomplete.getPlace());
-        }
-    }
-
     logout() {
         this.store.dispatch(Logout());
     }
@@ -206,11 +184,16 @@ export class AppComponent implements OnInit, AfterViewInit {
     openModal() {
         this.loginCmp.openModal();
     }
+
     addEvent() {
         console.log('div', this.map.googleMap?.getDiv());
         this.matDialog.open(EventDialogComponent, {
             data: { map: this.map.googleMap?.getDiv().firstElementChild },
             autoFocus: false,
         });
+    }
+
+    onMarkerClicked(event: EventData) {
+        this.matDialog.open(EventDialogComponent, { data: { event: event } });
     }
 }

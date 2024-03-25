@@ -8,6 +8,8 @@ import {
     fetchEvents,
     loadEvents,
     saveEvent,
+    updateEvent,
+    updateEventStore,
 } from './events.actions';
 
 @Injectable()
@@ -49,14 +51,32 @@ export class EventsEffect {
                             if (response.hasOwnProperty(key)) {
                                 eventArray.push(
                                     new EventData(
-                                        response[key].name,
+                                        response[key].title,
                                         response[key].position,
+                                        response[key].formattedAddress,
                                         key
                                     )
                                 );
                             }
                         }
                         return loadEvents({ payload: eventArray });
+                    })
+                );
+            })
+        )
+    );
+
+    updateEvent = createEffect(() =>
+        this.actions$.pipe(
+            ofType(updateEvent),
+            switchMap((action) => {
+                return this.eventsService.updateEvent(action.payload).pipe(
+                    tap((res) => {
+                        console.log('Update Event res', res);
+                    }),
+                    map(() => {
+                        console.log({ payload: action.payload });
+                        return updateEventStore({ payload: action.payload });
                     })
                 );
             })

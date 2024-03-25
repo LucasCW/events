@@ -1,12 +1,28 @@
-import { Component, Inject, OnInit, inject } from '@angular/core';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import {
+    AfterViewInit,
+    Component,
+    Inject,
+    OnInit,
+    ViewChild,
+    inject,
+} from '@angular/core';
+import {
+    FormBuilder,
+    FormControl,
+    FormsModule,
+    ReactiveFormsModule,
+} from '@angular/forms';
+import {
+    MatAutocomplete,
+    MatAutocompleteModule,
+} from '@angular/material/autocomplete';
 import {
     MatDialog,
     MatDialogTitle,
     MatDialogContent,
     MatDialogClose,
     MAT_DIALOG_DATA,
+    MatDialogRef,
 } from '@angular/material/dialog';
 import {
     MatFormFieldModule,
@@ -22,6 +38,7 @@ import {
     Subject,
     bindCallback,
     debounceTime,
+    filter,
     first,
     from,
     map,
@@ -30,7 +47,21 @@ import {
     startWith,
 } from 'rxjs';
 import { stat } from 'fs';
+import { State as AppState } from '../store/index';
+import { Store } from '@ngrx/store';
+import { app } from '../../../server';
+import {
+    createEvent,
+    saveEvent,
+    updateEvent,
+} from '../store/event/events.actions';
+import { EventData } from '../core/models/event';
 
+interface PlaceResult {
+    placeId?: string;
+    formattedAddress?: string;
+    position?: google.maps.LatLngLiteral | google.maps.LatLng;
+}
 @Component({
     selector: 'app-event-dialog',
     standalone: true,
@@ -45,32 +76,82 @@ import { stat } from 'fs';
     templateUrl: './event-dialog.component.html',
     styleUrl: './event-dialog.component.css',
 })
-export class EventDialogComponent implements OnInit {
-    searchResult = new BehaviorSubject<google.maps.places.PlaceResult[]>([]);
+export class EventDialogComponent implements OnInit, AfterViewInit {
+    isEditMode = false;
+    form = this.fb.group({
+        address: this.fb.control<PlaceResult | string>(''),
+        title: '',
+    });
 
-    locationControl = new FormControl('');
+    @ViewChild(MatAutocomplete)
+    addressAutocomplete!: MatAutocomplete;
 
-    searchResultObs = this.searchResult.asObservable();
-    filteredLocations!: Observable<string[]>;
+    searchResult = new BehaviorSubject<PlaceResult[]>([]);
+
+    searchResultObs = this.searchResult.asObservable().pipe(debounceTime(200));
 
     constructor(
-        @Inject(MAT_DIALOG_DATA) private data: { map: HTMLDivElement }
-    ) {}
+        public dialogRef: MatDialogRef<EventDialogComponent>,
+        @Inject(MAT_DIALOG_DATA) private data: { event: EventData },
+        private fb: FormBuilder,
+        private store: Store<AppState>
+    ) {
+        this.isEditMode = this.data.event ? true : false;
+    }
+
+    get address() {
+        return this.form.controls.address as FormControl;
+    }
+
+    get title() {
+        return this.form.controls.title as FormControl;
+    }
 
     ngOnInit(): void {
-        console.log(this.locationControl);
+        if (this.data.event) {
+            console.log('Pre set data', this.data);
+
+            this.address.setValue(this.data.event);
+            this.title.setValue(this.data.event.title);
+
+            console.log(this.form.value);
+        }
+
         startWith(''),
-            this.locationControl.valueChanges
+            this.address.valueChanges
                 .pipe(
                     debounceTime(2000),
-                    map((value) => {
+                    filter((value) => typeof value === 'string'),
+                    map((value: string) => {
                         this.search(value || 'a');
                     })
                 )
                 .subscribe();
+
+        this.searchResultObs.subscribe((event) =>
+            console.log('emitting:', event.length)
+        );
+    }
+
+    ngAfterViewInit(): void {
+        this.addressAutocomplete.optionSelected.subscribe({
+            next: (selected: any) => {
+                console.log(selected);
+            },
+        });
+    }
+
+    displayFn(placeResult: PlaceResult | string): string {
+        if (typeof placeResult === 'string' && placeResult != undefined) {
+            return placeResult;
+        }
+        return placeResult && placeResult.formattedAddress
+            ? placeResult.formattedAddress
+            : '';
     }
 
     async search(value: string) {
+        console.log('searching:', value);
         if (value == '') return;
 
         const { AutocompleteService, PlacesService } =
@@ -94,7 +175,7 @@ export class EventDialogComponent implements OnInit {
             .pipe(
                 first(),
                 map((res) => {
-                    const results: google.maps.places.PlaceResult[] = [];
+                    let results: PlaceResult[] = [];
 
                     for (const predict of res.predictions) {
                         placesService.getDetails(
@@ -114,15 +195,84 @@ export class EventDialogComponent implements OnInit {
                                             .OK &&
                                     place
                                 ) {
-                                    results.push(place);
+                                    const newPlace = {
+                                        placeId: place.place_id,
+                                        formattedAddress:
+                                            place.formatted_address,
+                                        position: place.geometry?.location,
+                                    };
+                                    results = results.concat(newPlace);
+                                    this.searchResult.next(results);
                                 }
                             }
                         );
                     }
 
-                    this.searchResult.next(results);
+                    // const test = results;
+
+                    // console.log('emitting from map', test.length);
+                    // console.log('finished emmting');
                 })
             )
             .subscribe();
     }
+
+    submit() {
+        // Is there an elegant way to do this?
+        // Error handling logic needed.
+
+        console.log('submitted');
+        console.log(this.form.value);
+
+        let event: EventData | null = null;
+        if (
+            this.form.value.title &&
+            this.form.value.address &&
+            typeof this.form.value.address !== 'string'
+        ) {
+            if (this.form.value.address && this.form.value.address.position) {
+                event = new EventData(
+                    this.form.value.title,
+                    this.form.value.address.position,
+                    this.form.value.address.formattedAddress ?? ''
+                );
+                if (this.isEditMode) event.id = this.data.event.id;
+            }
+        }
+
+        if (event) {
+            if (this.isEditMode) {
+                this.store.dispatch(updateEvent({ payload: event }));
+            } else {
+                this.store.dispatch(saveEvent({ payload: event }));
+            }
+        }
+
+        this.dialogRef.close();
+    }
+
+    // private buildEventData(): EventData {
+    //     if (typeof this.form.value.address === 'string') {
+    //         return new EventData(this.form.value.title!, this.form.value.ad);
+    //     }
+
+    //     if (
+    //         this.form.value.title &&
+    //         this.form.value.address &&
+    //         typeof this.form.value.address !== 'string'
+    //     ) {
+    //         if (
+    //             this.form.value.address &&
+    //             this.form.value.address.geometry &&
+    //             this.form.value.address.geometry.location
+    //         ) {
+    //             const newEvent = new EventData(
+    //                 this.form.value.title,
+    //                 this.form.value.address!.geometry!.location!,
+    //                 this.form.value.address.formatted_address ?? ''
+    //             );
+    //             return newEvent;
+    //         }
+    //     }
+    // }
 }

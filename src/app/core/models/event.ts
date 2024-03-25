@@ -1,7 +1,8 @@
 export class EventData {
     constructor(
-        public name: string,
-        public position: google.maps.LatLngLiteral,
+        public title: string,
+        public position: google.maps.LatLngLiteral | google.maps.LatLng,
+        public formattedAddress: string,
         public id?: string
     ) {}
 }

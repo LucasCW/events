@@ -55,6 +55,7 @@
                     @for (event of events$ | async; track event.id) {
                     <map-advanced-marker
                         [position]="event.position"
+                        (mapClick)="onMarkerClicked(event)"
                     ></map-advanced-marker>
                     }
                 </google-map>

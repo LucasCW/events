@@ -16,4 +16,18 @@ export class EventsService {
     getEvents() {
         return this.http.get<{ [key: string]: EventData }>(this._eventsUrl);
     }
+
+    updateEvent(event: EventData) {
+        if (event.id) {
+            const body: { [key: string]: EventData } = {};
+            const { id, ...eventWithNoId } = event;
+
+            body[id] = eventWithNoId;
+
+            debugger;
+            return this.http.patch<EventData>(this._eventsUrl, body);
+        } else {
+            throw new Error("Event ID shouldn't be undefined here!");
+        }
+    }
 }

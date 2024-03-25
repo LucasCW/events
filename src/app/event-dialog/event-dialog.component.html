@@ -1,30 +1,40 @@
 <div class="container">
-    <h2 mat-dialog-title>Create an Event</h2>
-    <form>
-        <mat-form-field class="example-full-width">
+    <h2 mat-dialog-title class="m-3">Create an Event</h2>
+    <form class="m-3" [formGroup]="form" (ngSubmit)="submit()">
+        <mat-form-field>
+            <mat-label>Test Input field</mat-label>
+            <input
+                matInput
+                placeholder="Placeholder"
+                value="Test value"
+                formControlName="title"
+            />
+        </mat-form-field>
+
+        <mat-form-field>
             <mat-label>Location</mat-label>
             <input
                 type="text"
                 placeholder="Pick one"
                 aria-label="Location"
                 matInput
-                [formControl]="locationControl"
+                [formControl]="address"
                 [matAutocomplete]="location"
             />
-            <mat-autocomplete autoActiveFirstOption #location="matAutocomplete">
+            <mat-autocomplete
+                [displayWith]="displayFn"
+                #location="matAutocomplete"
+            >
                 @for (location of searchResultObs | async; track
-                location.place_id) {
-                <mat-option [value]="location.formatted_address">{{
-                    location.formatted_address
+                location.placeId) {
+                <mat-option [value]="location">{{
+                    location.formattedAddress
                 }}</mat-option>
                 }
             </mat-autocomplete>
         </mat-form-field>
-
-        <mat-form-field>
-            <mat-label>Test Input field</mat-label>
-            <input matInput placeholder="Placeholder" value="Test value" />
-        </mat-form-field>
+        <button class="btn btn-primary mb-3" type="submit">
+            {{ isEditMode ? "Update" : "Save" }}
+        </button>
     </form>
-    <button class="btn btn-primary">Give me the address¡</button>
 </div>
