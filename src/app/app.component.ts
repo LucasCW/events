@@ -9,6 +9,9 @@ import {
     ViewChildren,
     inject,
 } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
+import { AngularFireDatabaseModule } from '@angular/fire/compat/database';
+import { Database } from '@angular/fire/database';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import {
     GoogleMap,
@@ -23,16 +26,13 @@ import {
     faSignOut,
     faUserLarge,
 } from '@fortawesome/free-solid-svg-icons';
-import { Store, select } from '@ngrx/store';
-import { first, map } from 'rxjs';
+import { Store } from '@ngrx/store';
 import { EventData } from '../app/core/models/event';
 import { State as AppState } from '../app/store/index';
-import { User } from './core/models/user';
+import { AuthenticationService } from './core/services/authentication.service';
 import { EventDialogComponent } from './event-dialog/event-dialog.component';
 import { LoginComponent } from './login/login.component';
 import { SidebarComponent } from './sidebar/sidebar.component';
-import { AuthenticateSuccess, Logout } from './store/auth/auth.actions';
-import * as fromAuthSelector from './store/auth/auth.selectors';
 import { fetchEvents } from './store/event/events.actions';
 import { eventsSelector } from './store/event/events.selectors';
 
@@ -48,6 +48,7 @@ import { eventsSelector } from './store/event/events.selectors';
         AsyncPipe,
         ReactiveFormsModule,
         FormsModule,
+        AngularFireDatabaseModule,
     ],
     templateUrl: './app.component.html',
     styleUrl: './app.component.css',
@@ -70,7 +71,7 @@ export class AppComponent implements OnInit, AfterViewInit {
     faSignOut = faSignOut;
     faPlus = faPlus;
 
-    isLoggedIn$ = this.store.select(fromAuthSelector.isLoggedInSelector);
+    isLoggedIn = false;
 
     title = 'events';
 
@@ -97,14 +98,6 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
     ngAfterViewInit(): void {
-        this.isLoggedIn$
-            .pipe(
-                first(),
-                map((isLoggedIn: boolean) => {
-                    if (!isLoggedIn) this.loginCmp.openModal();
-                })
-            )
-            .subscribe();
         this.map.mapDblclick.subscribe((event: google.maps.MapMouseEvent) => {
             // console.log('dbClick', event);
             // console.log('latLng', event.latLng?.lat(), event.latLng?.lng());
@@ -137,12 +130,21 @@ export class AppComponent implements OnInit, AfterViewInit {
         mapId: 'DEMO_MAP_ID',
     };
 
-    constructor(private store: Store<AppState>) {
-        const savedUser = localStorage.getItem('userData');
-        if (savedUser) {
-            const userObject = JSON.parse(savedUser) as User;
-            this.store.dispatch(AuthenticateSuccess({ payload: userObject }));
-        }
+    constructor(
+        private store: Store<AppState>,
+        private auth: Auth,
+        private db: Database,
+        private authService: AuthenticationService
+    ) {
+        auth.onAuthStateChanged((user) => {
+            console.log('auth state changed');
+            if (user != null) {
+                this.isLoggedIn = true;
+            } else {
+                this.isLoggedIn = false;
+                console.log('current user is still null');
+            }
+        });
     }
 
     zoomIn() {
@@ -165,7 +167,8 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
     logout() {
-        this.store.dispatch(Logout());
+        this.authService.logoutWithAuth();
+        this.isLoggedIn = false;
     }
 
     openModal() {

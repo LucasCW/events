@@ -1,22 +1,16 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { User } from '../models/user';
+import { Auth, signInWithEmailAndPassword, signOut } from '@angular/fire/auth';
 
 @Injectable({ providedIn: 'root' })
 export class AuthenticationService {
-    private _loginUrl =
-        'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyAxXZQ-CyuMh_FSuslXYmFOOnHUFWF5F0g';
+    constructor(private http: HttpClient, private auth: Auth) {}
 
-    constructor(private http: HttpClient) {}
-
-    login(email: string, password: string) {
-        return this.http.post<User>(this._loginUrl, {
-            email: email,
-            password: password,
-        });
+    loginWithAuth(email: string, password: string) {
+        return signInWithEmailAndPassword(this.auth, email, password);
     }
 
-    logout() {
-        localStorage.removeItem('userData');
+    logoutWithAuth() {
+        return signOut(this.auth);
     }
 }

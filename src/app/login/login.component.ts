@@ -6,12 +6,9 @@ import {
     ReactiveFormsModule,
     Validators,
 } from '@angular/forms';
-import { Store } from '@ngrx/store';
 import { Modal } from 'bootstrap';
-import { State as AppState } from '../../app/store/index';
+import { BehaviorSubject } from 'rxjs';
 import { AuthenticationService } from '../core/services/authentication.service';
-import { LoginStart, Reset } from '../store/auth/auth.actions';
-import * as fromAuth from '../store/auth/auth.selectors';
 
 @Component({
     selector: 'app-login',
@@ -22,7 +19,8 @@ import * as fromAuth from '../store/auth/auth.selectors';
     providers: [AuthenticationService],
 })
 export class LoginComponent implements OnInit {
-    errors$ = this.store.select(fromAuth.errorSelector);
+    errorSubject = new BehaviorSubject<string>('');
+    errors$ = this.errorSubject.asObservable();
 
     private modal?: Modal;
 
@@ -37,15 +35,24 @@ export class LoginComponent implements OnInit {
         ),
     });
 
-    @ViewChild('loginModal', { static: true }) loginModal!: ElementRef;
+    @ViewChild('loginModal', { static: true })
+    loginModal!: ElementRef<HTMLDivElement>;
 
     constructor(
-        private store: Store<AppState>,
-        private fb: NonNullableFormBuilder
-    ) {}
+        private fb: NonNullableFormBuilder,
+        private authService: AuthenticationService
+    ) {
+        this.modal;
+    }
 
     ngOnInit(): void {
         this.modal = new Modal(this.loginModal.nativeElement);
+        this.loginModal.nativeElement.addEventListener(
+            'hidden.bs.modal',
+            () => {
+                this.errorSubject.next('');
+            }
+        );
     }
 
     openModal() {
@@ -55,27 +62,19 @@ export class LoginComponent implements OnInit {
     closeModal() {
         this.modal?.hide();
         this.loginForm.reset();
-        this.store.dispatch(Reset());
     }
 
     onSubmit() {
-        this.store.dispatch(
-            LoginStart({
-                payload: {
-                    email: this.loginForm.value.email!,
-                    password: this.loginForm.value.password!,
-                },
-            })
-        );
-
-        this.store.select(fromAuth.loggedInUserSelector).subscribe({
-            next: (result) => {
-                if (result) this.modal?.hide();
-            },
-            error: (error) => {
-                console.log(error);
-            },
-        });
+        this.authService
+            .loginWithAuth(
+                this.loginForm.value.email!,
+                this.loginForm.value.password!
+            )
+            .then(() => this.modal?.hide())
+            .catch((reason) => {
+                // TODO this needs to be improved.
+                this.errorSubject.next('Please check your email/password');
+            });
     }
 
     get email() {

@@ -1,0 +1,14 @@
+{
+  "targets": {
+    "events-7fd3a": {
+      "hosting": {
+        "events": [
+          "events-7fd3a"
+        ]
+      }
+    }
+  },
+  "projects": {
+    "default": "events-7fd3a"
+  }
+}
