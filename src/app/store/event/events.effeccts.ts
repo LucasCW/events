@@ -11,6 +11,7 @@ import {
     updateEvent,
     updateEventStore,
 } from './events.actions';
+import { from } from 'rxjs';
 
 @Injectable()
 export class EventsEffect {
@@ -23,13 +24,13 @@ export class EventsEffect {
         this.actions$.pipe(
             ofType(saveEvent),
             switchMap((action) => {
-                return this.eventsService.addEvent(action.payload).pipe(
+                return from(this.eventsService.addEvent(action.payload)).pipe(
                     tap((response) => {
-                        console.log(response);
+                        console.log('createEvent res', response);
                     }),
                     map((response) => {
                         return createEvent({
-                            payload: { ...action.payload, id: response.name },
+                            payload: { ...action.payload, id: response.key! },
                         });
                     })
                 );
@@ -41,7 +42,10 @@ export class EventsEffect {
         this.actions$.pipe(
             ofType(fetchEvents),
             switchMap(() => {
-                return this.eventsService.getEvents().pipe(
+                return from(this.eventsService.getEventsDb()).pipe(
+                    map((snapshot) => {
+                        return snapshot.val();
+                    }),
                     tap((response) => {
                         console.log(response);
                     }),
@@ -72,7 +76,9 @@ export class EventsEffect {
         this.actions$.pipe(
             ofType(updateEvent),
             switchMap((action) => {
-                return this.eventsService.updateEvent(action.payload).pipe(
+                return from(
+                    this.eventsService.updateEvent(action.payload)
+                ).pipe(
                     tap((res) => {
                         console.log('Update Event res', res);
                     }),

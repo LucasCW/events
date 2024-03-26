@@ -13,7 +13,9 @@
             />
         </mat-form-field>
 
-        <mat-checkbox formControlName="isMultipleDate"
+        <mat-checkbox
+            formControlName="isMultipleDate"
+            (change)="toggleMultipleDate($event.checked)"
             >Multiple Dates</mat-checkbox
         >
 

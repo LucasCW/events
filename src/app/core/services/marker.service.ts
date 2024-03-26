@@ -1,31 +1,27 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { Database, get, push, ref, set } from '@angular/fire/database';
 import { EventData } from '../models/event';
 
 @Injectable({ providedIn: 'root' })
 export class EventsService {
-    private _eventsUrl =
-        'https://events-7fd3a-default-rtdb.firebaseio.com/events.json';
-
-    constructor(private http: HttpClient) {}
+    constructor(private db: Database) {}
 
     addEvent(event: EventData) {
-        return this.http.post<{ name: string }>(this._eventsUrl, event);
+        return push(ref(this.db, 'events'), JSON.parse(JSON.stringify(event)));
     }
 
-    getEvents() {
-        return this.http.get<{ [key: string]: EventData }>(this._eventsUrl);
+    getEventsDb() {
+        return get(ref(this.db, 'events'));
     }
 
     updateEvent(event: EventData) {
         if (event.id) {
-            const body: { [key: string]: EventData } = {};
             const { id, ...eventWithNoId } = event;
 
-            body[id] = eventWithNoId;
-
-            debugger;
-            return this.http.patch<EventData>(this._eventsUrl, body);
+            return set(
+                ref(this.db, 'events/' + id),
+                JSON.parse(JSON.stringify(eventWithNoId))
+            );
         } else {
             throw new Error("Event ID shouldn't be undefined here!");
         }

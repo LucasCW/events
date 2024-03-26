@@ -1,7 +1,6 @@
 import { ApplicationConfig, importProvidersFrom } from '@angular/core';
 import { provideRouter } from '@angular/router';
 
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
 import { getDatabase, provideDatabase } from '@angular/fire/database';
@@ -11,8 +10,6 @@ import { provideEffects } from '@ngrx/effects';
 import { provideStore } from '@ngrx/store';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
 import { routes } from './app.routes';
-import { AuthInterceptor } from './core/services/auth.interceptor.service';
-import { authInterceptor } from './core/services/test.interceptor.service';
 import { reducers } from './store';
 import { EventsEffect } from './store/event/events.effeccts';
 
@@ -20,11 +17,9 @@ export const appConfig: ApplicationConfig = {
     providers: [
         provideRouter(routes),
         provideClientHydration(),
-        provideHttpClient(),
         provideStore(reducers),
         provideEffects(EventsEffect),
         provideStoreDevtools({ maxAge: 25 }),
-        provideHttpClient(withInterceptors([authInterceptor, AuthInterceptor])),
         provideAnimationsAsync(),
         importProvidersFrom(
             provideFirebaseApp(() =>

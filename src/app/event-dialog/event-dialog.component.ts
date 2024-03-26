@@ -83,6 +83,12 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
 
     searchResultObs = this.searchResult.asObservable().pipe(debounceTime(200));
 
+    toggleMultipleDate(checked: boolean) {
+        checked
+            ? this.form.controls.date.reset()
+            : this.form.controls.range.reset();
+    }
+
     constructor(
         public dialogRef: MatDialogRef<EventDialogComponent>,
         @Inject(MAT_DIALOG_DATA) private data: { event: EventData },
@@ -230,18 +236,20 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
                 event = new EventData(
                     this.form.value.title,
                     this.form.value.address.position,
-                    this.form.value.address.formattedAddress ?? '',
-                    this.form.value.date ?? undefined,
-                    this.form.value.isMultipleDate
-                        ? {
-                              start: this.form.value.range!.start!,
-                              end: this.form.value.range!.end!,
-                          }
-                        : undefined,
-                    this.isEditMode && this.data.event.hasOwnProperty('id')
-                        ? this.data.event.id
-                        : undefined
+                    this.form.value.address.formattedAddress ?? ''
                 );
+                if (this.form.value.date) {
+                    event.date = this.form.value.date;
+                } else {
+                    event.range = {
+                        start: this.form.value.range!.start!,
+                        end: this.form.value.range!.end!,
+                    };
+                }
+
+                if (this.isEditMode) {
+                    event.id = this.data.event.id;
+                }
             }
         }
 
@@ -253,6 +261,7 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
             }
         }
 
+        this.form.reset();
         this.dialogRef.close();
     }
 }
