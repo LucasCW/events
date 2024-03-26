@@ -56,6 +56,7 @@ export class EventsEffect {
                                 eventArray.push(
                                     new EventData(
                                         response[key].title,
+                                        response[key].owner,
                                         response[key].position,
                                         response[key].formattedAddress,
                                         response[key].date,

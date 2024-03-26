@@ -36,6 +36,7 @@ import {
 import { EventData } from '../core/models/event';
 import { saveEvent, updateEvent } from '../store/event/events.actions';
 import { State as AppState } from '../store/index';
+import { Auth } from '@angular/fire/auth';
 
 interface PlaceResult {
     placeId?: string;
@@ -61,6 +62,9 @@ interface PlaceResult {
 })
 export class EventDialogComponent implements OnInit, AfterViewInit {
     isEditMode = false;
+    isCreateMode = false;
+    isViewMode = false;
+
     form = this.fb.group({
         address: this.fb.control<PlaceResult | null>(null, {
             validators: [Validators.required],
@@ -93,9 +97,20 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
         public dialogRef: MatDialogRef<EventDialogComponent>,
         @Inject(MAT_DIALOG_DATA) private data: { event: EventData },
         private fb: FormBuilder,
-        private store: Store<AppState>
+        private store: Store<AppState>,
+        private auth: Auth
     ) {
-        this.isEditMode = this.data.event ? true : false;
+        this.isEditMode = !!(
+            this.data.event &&
+            this.auth.currentUser &&
+            this.data.event.owner.id == this.auth.currentUser.uid
+        );
+
+        this.isCreateMode = !this.data.event;
+
+        this.isViewMode = !this.isCreateMode && !this.isEditMode;
+
+        console.log(this.isEditMode, this.isCreateMode, this.isViewMode);
     }
 
     get address() {
@@ -235,6 +250,10 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
             if (this.form.value.address && this.form.value.address.position) {
                 event = new EventData(
                     this.form.value.title,
+                    {
+                        id: this.auth.currentUser!.uid,
+                        email: this.auth.currentUser!.email!,
+                    },
                     this.form.value.address.position,
                     this.form.value.address.formattedAddress ?? ''
                 );
@@ -261,6 +280,11 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
             }
         }
 
+        this.form.reset();
+        this.dialogRef.close();
+    }
+
+    close() {
         this.form.reset();
         this.dialogRef.close();
     }

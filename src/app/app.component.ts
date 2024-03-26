@@ -176,7 +176,6 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
     addEvent() {
-        console.log('div', this.map.googleMap?.getDiv());
         this.matDialog.open(EventDialogComponent, {
             data: { map: this.map.googleMap?.getDiv().firstElementChild },
             autoFocus: false,
@@ -184,7 +183,6 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
     onMarkerClicked(event: EventData) {
-        console.log(event);
         this.matDialog.open(EventDialogComponent, { data: { event: event } });
     }
 }
