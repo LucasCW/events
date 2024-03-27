@@ -30,7 +30,10 @@ import { Store } from '@ngrx/store';
 import { EventData } from '../app/core/models/event';
 import { State as AppState } from '../app/store/index';
 import { AuthenticationService } from './core/services/authentication.service';
-import { EventDialogComponent } from './event-dialog/event-dialog.component';
+import {
+    DialogMode,
+    EventDialogComponent,
+} from './event-dialog/event-dialog.component';
 import { LoginComponent } from './login/login.component';
 import { SidebarComponent } from './sidebar/sidebar.component';
 import { fetchEvents } from './store/event/events.actions';
@@ -177,11 +180,25 @@ export class AppComponent implements OnInit, AfterViewInit {
 
     addEvent() {
         this.matDialog.open(EventDialogComponent, {
+            data: {
+                mode: DialogMode.Create,
+                isAuthenticated: !!this.auth.currentUser,
+            },
             autoFocus: false,
         });
     }
 
     onMarkerClicked(event: EventData) {
-        this.matDialog.open(EventDialogComponent, { data: { event: event } });
+        const mode =
+            event.owner.id == this.auth.currentUser?.uid
+                ? DialogMode.Edit
+                : DialogMode.View;
+        this.matDialog.open(EventDialogComponent, {
+            data: {
+                event: event,
+                mode: mode,
+                isAuthenticated: !!this.auth.currentUser,
+            },
+        });
     }
 }

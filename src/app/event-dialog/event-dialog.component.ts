@@ -28,7 +28,6 @@ import { Store } from '@ngrx/store';
 import { isUndefined } from 'lodash';
 import {
     BehaviorSubject,
-    Observable,
     debounceTime,
     filter,
     first,
@@ -37,7 +36,6 @@ import {
     startWith,
     take,
 } from 'rxjs';
-import { Identity } from '../core/models/Identity';
 import { EventData } from '../core/models/event';
 import {
     rsvp,
@@ -47,13 +45,19 @@ import {
 } from '../store/event/events.actions';
 import { rsvpSelector } from '../store/event/events.selectors';
 import { State as AppState } from '../store/index';
-import { debug } from 'console';
 
 interface PlaceResult {
     placeId?: string;
     formattedAddress?: string;
     position?: google.maps.LatLngLiteral | google.maps.LatLng;
 }
+
+export enum DialogMode {
+    View,
+    Edit,
+    Create,
+}
+
 @Component({
     selector: 'app-event-dialog',
     standalone: true,
@@ -72,13 +76,23 @@ interface PlaceResult {
     styleUrl: './event-dialog.component.css',
 })
 export class EventDialogComponent implements OnInit, AfterViewInit {
-    isEditMode = false;
-    isCreateMode = false;
-    isViewMode = false;
-    isAuthenticated = false;
-    rsvp$: Observable<{ [key: string]: Identity } | undefined> | null = null;
-    numberOfRSVPs$: Observable<number> | null = null;
-    rsvpStatusSubject = new BehaviorSubject<{
+    mode: DialogMode = this.data.mode;
+
+    rsvp$ =
+        this.data &&
+        this.data.event &&
+        this.store.select(rsvpSelector(this.data.event.id!));
+
+    numberOfRSVPs$ = this.rsvp$?.pipe(
+        filter((rsvps) => {
+            return !isUndefined(rsvps);
+        }),
+        map((rsvps) => {
+            return Object.keys(rsvps!).length;
+        })
+    );
+
+    private rsvpStatusSubject = new BehaviorSubject<{
         isRSVPed: boolean;
         key?: string;
     }>({ isRSVPed: false });
@@ -86,7 +100,7 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
     rsvpStatus$ = this.rsvpStatusSubject?.asObservable();
 
     form = this.fb.group({
-        address: this.fb.control<PlaceResult | null>(null, {
+        address: this.fb.control<PlaceResult | string | null>('', {
             validators: [Validators.required],
         }),
         isMultipleDate: false,
@@ -115,48 +129,26 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
 
     constructor(
         public dialogRef: MatDialogRef<EventDialogComponent>,
-        @Inject(MAT_DIALOG_DATA) private data: { event: EventData },
         private fb: FormBuilder,
         private store: Store<AppState>,
-        private auth: Auth
-    ) {
-        this.isEditMode = !!(
-            this.data.event &&
-            this.auth.currentUser &&
-            this.data.event.owner.id == this.auth.currentUser.uid
-        );
-
-        this.isCreateMode = !this.data.event;
-
-        this.isAuthenticated = !!this.auth.currentUser;
-
-        this.isViewMode =
-            (!this.isCreateMode && !this.isEditMode) || !this.auth.currentUser;
-
-        if (this.isViewMode) this.form.disable();
-
-        if (this.data.event) {
-            this.rsvp$ = this.store.select(rsvpSelector(this.data.event.id!));
-            this.numberOfRSVPs$ = this.rsvp$.pipe(
-                filter((rsvps) => {
-                    return !isUndefined(rsvps);
-                }),
-                map((rsvps) => {
-                    return Object.keys(rsvps!).length;
-                })
-            );
+        private auth: Auth,
+        @Inject(MAT_DIALOG_DATA)
+        protected data: {
+            event?: EventData;
+            mode: DialogMode;
+            isAuthenticated: boolean;
         }
+    ) {
+        if (this.mode == DialogMode.View) this.form.disable();
 
-        if (this.isAuthenticated && this.isViewMode) {
+        if (this.data.isAuthenticated && this.mode == DialogMode.View) {
             this.rsvp$ &&
                 this.rsvp$
                     .pipe(
                         filter((rsvps) => {
-                            console.log('rsvp status: ', this.rsvpStatus$);
                             return !isUndefined(rsvps);
                         }),
                         map((rsvps) => {
-                            console.log('rsvp status: ', this.rsvpStatus$);
                             if (!rsvps)
                                 return this.rsvpStatusSubject.next({
                                     isRSVPed: false,
@@ -180,11 +172,6 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
                     )
                     .subscribe();
         }
-        // this.rsvpStatus$ = this.rsvpStatusSubject.asObservable();
-    }
-
-    get address() {
-        return this.form.controls.address as FormControl;
     }
 
     get title() {
@@ -196,14 +183,13 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
     }
 
     toggleRSVP() {
-        debugger;
         this.rsvpStatus$?.pipe(take(1)).subscribe((status) => {
             if (status.isRSVPed) {
                 this.store.dispatch(
                     unrsvp({
                         payload: {
                             key: status.key!,
-                            event: this.data.event,
+                            event: this.data.event!,
                         },
                     })
                 );
@@ -212,7 +198,7 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
                     rsvp({
                         payload: {
                             user: this.auth.currentUser!,
-                            event: this.data.event,
+                            event: this.data.event!,
                         },
                     })
                 );
@@ -221,7 +207,6 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
     }
 
     ngOnInit(): void {
-        console.log('Event', this.data.event);
         if (this.data.event) {
             this.form.setValue({
                 address: this.data.event,
@@ -236,28 +221,20 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
         }
 
         startWith(''),
-            this.address.valueChanges
+            this.form.controls.address.valueChanges
                 .pipe(
                     debounceTime(2000),
-                    filter((value) => typeof value === 'string'),
+                    filter(
+                        (value): value is string => typeof value === 'string'
+                    ),
                     map((value: string) => {
                         this.search(value || 'a');
                     })
                 )
                 .subscribe();
-
-        this.searchResultObs.subscribe((event) =>
-            console.log('emitting:', event.length)
-        );
     }
 
-    ngAfterViewInit(): void {
-        this.addressAutocomplete.optionSelected.subscribe({
-            next: (selected: any) => {
-                console.log(selected);
-            },
-        });
-    }
+    ngAfterViewInit(): void {}
 
     displayFn(placeResult: PlaceResult | string): string {
         if (typeof placeResult === 'string' && placeResult != undefined) {
@@ -349,7 +326,7 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
                         id: this.auth.currentUser!.uid,
                         email: this.auth.currentUser!.email!,
                     },
-                    this.isEditMode ? this.data.event.rsvp : {},
+                    this.mode == DialogMode.Edit ? this.data.event!.rsvp : {},
                     this.form.value.address.position,
                     this.form.value.address.formattedAddress ?? ''
                 );
@@ -362,14 +339,14 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
                     };
                 }
 
-                if (this.isEditMode) {
-                    event.id = this.data.event.id;
+                if (this.mode == DialogMode.Edit) {
+                    event.id = this.data.event!.id;
                 }
             }
         }
 
         if (event) {
-            if (this.isEditMode) {
+            if (this.mode == DialogMode.Edit) {
                 this.store.dispatch(updateEvent({ payload: event }));
             } else {
                 this.store.dispatch(saveEvent({ payload: event }));
@@ -383,5 +360,17 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
     close() {
         this.form.reset();
         this.dialogRef.close();
+    }
+
+    isViewMode() {
+        return this.mode == DialogMode.View;
+    }
+
+    isEditMode() {
+        return this.mode == DialogMode.Edit;
+    }
+
+    isCreateMode() {
+        return this.mode == DialogMode.Create;
     }
 }

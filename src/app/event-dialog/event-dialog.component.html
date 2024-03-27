@@ -1,6 +1,12 @@
 <div class="container">
     <h2 mat-dialog-title class="m-3">
-        {{ isEditMode ? "Update the " : "Create a " }}Event
+        {{
+            isEditMode()
+                ? "Update the "
+                : isCreateMode()
+                ? "Create a "
+                : "View "
+        }}Event
     </h2>
     @if(numberOfRSVPs$ && numberOfRSVPs$ | async) {
     <h3>{{ numberOfRSVPs$ | async | json }} RSVPs</h3>
@@ -70,7 +76,7 @@
                 placeholder="Pick one"
                 aria-label="Location"
                 matInput
-                [formControl]="address"
+                formControlName="address"
                 [matAutocomplete]="location"
             />
             <mat-autocomplete
@@ -87,9 +93,9 @@
         </mat-form-field>
         @if (!isViewMode) {
         <button class="btn btn-primary mb-3 me-3" type="submit">
-            {{ isEditMode ? "Update" : "Save" }}
+            {{ isEditMode() ? "Update" : "Save" }}
         </button>
-        } @if(isViewMode && isAuthenticated) {
+        } @if(isViewMode() && this.data.isAuthenticated) {
         <button
             class="btn btn-secondary mb-3 me-3"
             (click)="toggleRSVP()"
