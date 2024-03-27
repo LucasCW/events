@@ -11,3 +11,8 @@ export const eventsSelector = createSelector(
         return state.events;
     }
 );
+
+export const rsvpSelector = (eventId: string) =>
+    createSelector(featureSelector, (state: State) => {
+        return state.events.find((event) => event.id == eventId)?.rsvp;
+    });

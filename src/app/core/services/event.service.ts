@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
-import { Database, get, push, ref, set } from '@angular/fire/database';
+import { Database, get, push, ref, set, update } from '@angular/fire/database';
 import { EventData } from '../models/event';
+import { User } from 'firebase/auth';
+import { remove } from 'firebase/database';
 
 @Injectable({ providedIn: 'root' })
 export class EventsService {
@@ -25,5 +27,16 @@ export class EventsService {
         } else {
             throw new Error("Event ID shouldn't be undefined here!");
         }
+    }
+
+    rsvp(user: User, event: EventData) {
+        return push(ref(this.db, 'events/' + event.id! + '/rsvp/'), {
+            email: user.email,
+            id: user.uid,
+        });
+    }
+
+    unrsvp(key: string, event: EventData) {
+        return remove(ref(this.db, 'events/' + event.id! + '/rsvp/' + key));
     }
 }

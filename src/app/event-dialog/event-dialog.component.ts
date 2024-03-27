@@ -6,6 +6,7 @@ import {
     OnInit,
     ViewChild,
 } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
 import {
     FormBuilder,
     FormControl,
@@ -24,19 +25,29 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Store } from '@ngrx/store';
+import { isUndefined } from 'lodash';
 import {
     BehaviorSubject,
+    Observable,
     debounceTime,
     filter,
     first,
     from,
     map,
     startWith,
+    take,
 } from 'rxjs';
+import { Identity } from '../core/models/Identity';
 import { EventData } from '../core/models/event';
-import { saveEvent, updateEvent } from '../store/event/events.actions';
+import {
+    rsvp,
+    saveEvent,
+    unrsvp,
+    updateEvent,
+} from '../store/event/events.actions';
+import { rsvpSelector } from '../store/event/events.selectors';
 import { State as AppState } from '../store/index';
-import { Auth } from '@angular/fire/auth';
+import { debug } from 'console';
 
 interface PlaceResult {
     placeId?: string;
@@ -64,6 +75,15 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
     isEditMode = false;
     isCreateMode = false;
     isViewMode = false;
+    isAuthenticated = false;
+    rsvp$: Observable<{ [key: string]: Identity } | undefined> | null = null;
+    numberOfRSVPs$: Observable<number> | null = null;
+    rsvpStatusSubject = new BehaviorSubject<{
+        isRSVPed: boolean;
+        key?: string;
+    }>({ isRSVPed: false });
+
+    rsvpStatus$ = this.rsvpStatusSubject?.asObservable();
 
     form = this.fb.group({
         address: this.fb.control<PlaceResult | null>(null, {
@@ -108,9 +128,59 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
 
         this.isCreateMode = !this.data.event;
 
-        this.isViewMode = !this.isCreateMode && !this.isEditMode;
+        this.isAuthenticated = !!this.auth.currentUser;
 
-        console.log(this.isEditMode, this.isCreateMode, this.isViewMode);
+        this.isViewMode =
+            (!this.isCreateMode && !this.isEditMode) || !this.auth.currentUser;
+
+        if (this.isViewMode) this.form.disable();
+
+        if (this.data.event) {
+            this.rsvp$ = this.store.select(rsvpSelector(this.data.event.id!));
+            this.numberOfRSVPs$ = this.rsvp$.pipe(
+                filter((rsvps) => {
+                    return !isUndefined(rsvps);
+                }),
+                map((rsvps) => {
+                    return Object.keys(rsvps!).length;
+                })
+            );
+        }
+
+        if (this.isAuthenticated && this.isViewMode) {
+            this.rsvp$ &&
+                this.rsvp$
+                    .pipe(
+                        filter((rsvps) => {
+                            console.log('rsvp status: ', this.rsvpStatus$);
+                            return !isUndefined(rsvps);
+                        }),
+                        map((rsvps) => {
+                            console.log('rsvp status: ', this.rsvpStatus$);
+                            if (!rsvps)
+                                return this.rsvpStatusSubject.next({
+                                    isRSVPed: false,
+                                });
+
+                            const key = Object.keys(rsvps).find(
+                                (key) =>
+                                    rsvps[key].id == this.auth.currentUser?.uid
+                            );
+
+                            if (key)
+                                return this.rsvpStatusSubject.next({
+                                    isRSVPed: true,
+                                    key: key,
+                                });
+
+                            return this.rsvpStatusSubject.next({
+                                isRSVPed: false,
+                            });
+                        })
+                    )
+                    .subscribe();
+        }
+        // this.rsvpStatus$ = this.rsvpStatusSubject.asObservable();
     }
 
     get address() {
@@ -123,6 +193,31 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
 
     get range() {
         return this.form.controls.range as FormGroup;
+    }
+
+    toggleRSVP() {
+        debugger;
+        this.rsvpStatus$?.pipe(take(1)).subscribe((status) => {
+            if (status.isRSVPed) {
+                this.store.dispatch(
+                    unrsvp({
+                        payload: {
+                            key: status.key!,
+                            event: this.data.event,
+                        },
+                    })
+                );
+            } else {
+                this.store.dispatch(
+                    rsvp({
+                        payload: {
+                            user: this.auth.currentUser!,
+                            event: this.data.event,
+                        },
+                    })
+                );
+            }
+        });
     }
 
     ngOnInit(): void {
@@ -254,6 +349,7 @@ export class EventDialogComponent implements OnInit, AfterViewInit {
                         id: this.auth.currentUser!.uid,
                         email: this.auth.currentUser!.email!,
                     },
+                    this.isEditMode ? this.data.event.rsvp : {},
                     this.form.value.address.position,
                     this.form.value.address.formattedAddress ?? ''
                 );

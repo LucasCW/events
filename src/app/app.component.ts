@@ -177,7 +177,6 @@ export class AppComponent implements OnInit, AfterViewInit {
 
     addEvent() {
         this.matDialog.open(EventDialogComponent, {
-            data: { map: this.map.googleMap?.getDiv().firstElementChild },
             autoFocus: false,
         });
     }

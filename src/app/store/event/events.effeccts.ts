@@ -1,17 +1,21 @@
 import { Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
+import { from } from 'rxjs';
 import { map, switchMap, tap } from 'rxjs/operators';
 import { EventData } from '../../core/models/event';
-import { EventsService } from '../../core/services/marker.service';
+import { EventsService } from '../../core/services/event.service';
 import {
     createEvent,
     fetchEvents,
     loadEvents,
+    rsvp,
     saveEvent,
+    unrsvp,
     updateEvent,
     updateEventStore,
+    addRSVP,
+    removeRSVP,
 } from './events.actions';
-import { from } from 'rxjs';
 
 @Injectable()
 export class EventsEffect {
@@ -38,6 +42,59 @@ export class EventsEffect {
         )
     );
 
+    rsvpEvent = createEffect(() => {
+        return this.actions$.pipe(
+            ofType(rsvp),
+            switchMap((action) => {
+                return from(
+                    this.eventsService.rsvp(
+                        action.payload.user,
+                        action.payload.event
+                    )
+                ).pipe(
+                    tap((res) => {
+                        console.log(res);
+                    }),
+                    map((res) =>
+                        addRSVP({
+                            payload: {
+                                user: action.payload.user,
+                                event: action.payload.event,
+                                key: res.key!,
+                            },
+                        })
+                    )
+                );
+            })
+        );
+    });
+
+    unrsvpEvent = createEffect(() => {
+        return this.actions$.pipe(
+            ofType(unrsvp),
+            switchMap((action) => {
+                return from(
+                    this.eventsService.unrsvp(
+                        action.payload.key,
+                        action.payload.event
+                    )
+                ).pipe(
+                    tap((res) => {
+                        console.log(res);
+                    }),
+                    map(() =>
+                        removeRSVP({
+                            payload: {
+                                key: action.payload.key,
+                                event: action.payload.event,
+                            },
+                        })
+                    )
+                );
+            })
+        );
+    });
+
     fetchEvents = createEffect(() =>
         this.actions$.pipe(
             ofType(fetchEvents),
@@ -57,6 +114,7 @@ export class EventsEffect {
                                     new EventData(
                                         response[key].title,
                                         response[key].owner,
+                                        response[key].rsvp,
                                         response[key].position,
                                         response[key].formattedAddress,
                                         response[key].date,

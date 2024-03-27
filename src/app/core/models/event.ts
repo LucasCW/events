@@ -1,8 +1,11 @@
+import { Identity } from './Identity';
+
 export class EventData {
     public position: google.maps.LatLngLiteral;
     constructor(
         public title: string,
-        public owner: { id: string; email: string },
+        public owner: Identity,
+        public rsvp: { [key: string]: Identity },
         position: google.maps.LatLngLiteral | google.maps.LatLng,
         public formattedAddress: string,
         public date?: Date,
